@@ -1,0 +1,9 @@
+
+apriltags:
+  family: 'tag36h11'
+  tag_size: 0.065
+  height: 480
+  width: 640
+
+camera:
+  K: [1075.47, 0, 621.01, 0, 1077.22, 362.80, 0, 0, 1]
