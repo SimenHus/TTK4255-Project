@@ -1,21 +1,30 @@
 from dt_apriltags import Detector
 import numpy as np
-from os import path
+from os import path, listdir
 import cv2
 import yaml
+import imutils
+from common import drawImage
+import matplotlib.pyplot as plt
 
-
+# Define paths
 IMAGE_FOLDER = path.join(path.curdir, 'images')
 APRILTAGS = path.join(path.curdir, 'apriltags', 'tag36h11')
 PARAMS_FOLDER = path.join(path.curdir, 'params')
+CALIBRATION = path.join(path.curdir, 'calibration')
 
+# List of images in image folder
+IMGS = listdir(IMAGE_FOLDER)
 
+# Load parameters from yaml file
 with open('parameters.yaml', 'r') as f:
     parameters = yaml.safe_load(f)
 
+# Parameter sections
 apriltagParams = parameters['apriltags']
-cameraParams = parameters['camera']
+cameraParams = {'K': np.loadtxt(path.join(CALIBRATION, 'K.txt'))}
 
+# Initialize the apriltags detector
 at_detector = Detector(families=apriltagParams['family'],
                        nthreads=1,
                        quad_decimate=1.0,
@@ -24,28 +33,25 @@ at_detector = Detector(families=apriltagParams['family'],
                        decode_sharpening=0.25,
                        debug=0)
 
-imgName = 'test_image_multiple_01.png'
-colorImg = cv2.imread(path.join(IMAGE_FOLDER, imgName))
-grayImg = cv2.cvtColor(colorImg, cv2.COLOR_RGB2GRAY)
-intrinsicMatrix = np.array(cameraParams['K']).reshape((3,3))
+
+imgPath = path.join(IMAGE_FOLDER, IMGS[0]) # Choose image to use
+colorImg = cv2.imread(imgPath) # Read image from file
+colorImg = cv2.cvtColor(colorImg, cv2.COLOR_BGR2RGB)
+
+
+grayImg = cv2.cvtColor(colorImg, cv2.COLOR_RGB2GRAY) # Convert image to grayscale
+intrinsicMatrix = np.array(cameraParams['K']).reshape((3,3)) # Get camera matrix
+# Gather useful info from camera matrix
 cameraCalibrationParams = (intrinsicMatrix[0,0], intrinsicMatrix[1,1],
                            intrinsicMatrix[0,2], intrinsicMatrix[1,2])
 
-tags = at_detector.detect(grayImg, estimate_tag_pose=False, camera_params=cameraCalibrationParams)
-print(tags)
+tags = at_detector.detect(grayImg, estimate_tag_pose=True, camera_params=cameraCalibrationParams,
+                          tag_size=apriltagParams['tagSize']) # Detect tags
 
-for tag in tags:
-    for idx in range(len(tag.corners)):
-        cv2.line(colorImg, tuple(tag.corners[idx-1, :].astype(int)), tuple(tag.corners[idx, :].astype(int)), (0, 255, 0))
 
-    cv2.putText(colorImg, str(tag.tag_id),
-                org=(tag.corners[0, 0].astype(int)+10,tag.corners[0, 1].astype(int)+10),
-                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=0.8,
-                color=(0, 0, 255))
 
-cv2.imshow('Detected tags', colorImg)
+fig = plt.figure()
 
-k = cv2.waitKey(0)
-if k == 27:         # wait for ESC key to exit
-    cv2.destroyAllWindows()
+drawImage(fig, colorImg, intrinsicMatrix, tags)
+plt.savefig('result.pdf', format='pdf')
+plt.show()
