@@ -1,3 +1,5 @@
+import numpy as np
+
 def project(K, X):
     """
     Computes the pinhole projection of a 3xN array of 3D points X
@@ -7,3 +9,9 @@ def project(K, X):
     uvw = K@X[:3,:]
     uvw /= uvw[2,:]
     return uvw[:2,:]
+
+
+def inverseProject(K, u):
+    utilde = np.hstack((u, 1))
+    xtilde = np.linalg.inv(K)@utilde
+    return xtilde

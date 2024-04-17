@@ -1,28 +1,9 @@
 from dt_apriltags import Detector
-import numpy as np
-from os import path, listdir
-import cv2
-import yaml
-import imutils
-from common import drawImage
+from os import path
 import matplotlib.pyplot as plt
 
-# Define paths
-IMAGE_FOLDER = path.join(path.curdir, 'images')
-APRILTAGS = path.join(path.curdir, 'apriltags', 'tag36h11')
-PARAMS_FOLDER = path.join(path.curdir, 'params')
-CALIBRATION = path.join(path.curdir, 'calibration')
+from common import *
 
-# List of images in image folder
-IMGS = listdir(IMAGE_FOLDER)
-
-# Load parameters from yaml file
-with open('parameters.yaml', 'r') as f:
-    parameters = yaml.safe_load(f)
-
-# Parameter sections
-apriltagParams = parameters['apriltags']
-cameraParams = {'K': np.loadtxt(path.join(CALIBRATION, 'K.txt'))}
 
 # Initialize the apriltags detector
 at_detector = Detector(families=apriltagParams['family'],
@@ -39,19 +20,21 @@ colorImg = cv2.imread(imgPath) # Read image from file
 colorImg = cv2.cvtColor(colorImg, cv2.COLOR_BGR2RGB)
 
 
-grayImg = cv2.cvtColor(colorImg, cv2.COLOR_RGB2GRAY) # Convert image to grayscale
-intrinsicMatrix = np.array(cameraParams['K']).reshape((3,3)) # Get camera matrix
-# Gather useful info from camera matrix
-cameraCalibrationParams = (intrinsicMatrix[0,0], intrinsicMatrix[1,1],
-                           intrinsicMatrix[0,2], intrinsicMatrix[1,2])
-
-tags = at_detector.detect(grayImg, estimate_tag_pose=True, camera_params=cameraCalibrationParams,
-                          tag_size=apriltagParams['tagSize']) # Detect tags
-
+K = np.array(cameraParams['K']).reshape((3,3)) # Get camera matrix
+tags = detectTags(at_detector, colorImg, K, apriltagParams['tagSize'])
 
 
 fig = plt.figure()
 
-drawImage(fig, colorImg, intrinsicMatrix, tags)
-plt.savefig('result.pdf', format='pdf')
-plt.show()
+drawImage(fig, colorImg, K, tags)
+# plt.savefig('result.pdf', format='pdf')
+# plt.show()
+
+
+# True dist = 163
+tag = tags[0]
+R, t = tag.pose_R, tag.pose_t
+t = np.reshape(t, (3,))
+X = np.array([0, 0, 0])
+Xc = transform(X, R, t)
+print(Xc)

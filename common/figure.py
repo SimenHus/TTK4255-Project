@@ -25,7 +25,6 @@ def drawImage(fig, img, K, tags):
         T[:3, 3] = t
         drawFrame(K, T, scale=0.1, labels=True)
         
-    plt.legend()
     plt.xlim([0, img.shape[1]])
     plt.ylim([img.shape[0], 0])
     plt.axis('off')
