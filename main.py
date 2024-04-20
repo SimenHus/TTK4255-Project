@@ -1,27 +1,36 @@
-from os import path
-import matplotlib.pyplot as plt
-import cv2
-
 from common import *
 
-K = np.array(cameraParams['K']).reshape((3,3)) # Get camera matrix
 # Initialize the apriltags detector
 detector = DetectorClass(K=K, tagSize=apriltagParams['tagSize'], families=apriltagParams['family'])
 map = Map()
 
+@timeit
+def detectTags(frames):
+    for frame in frames:
+        tags = detector.detect(frame)
+        map.handleDetections(tags)
 
-fig = plt.figure()
+        drawTags(frame, K, tags)
+    return frames
 
-for imgPath in IMG_PATHS[:3]:
-    img = cv2.imread(imgPath) # Read image from file
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    tags = detector.detect(img)
-    print('Found {} tags'.format(len(tags)))
-    map.handleDetections(tags)
-    pose = map.cameraPose
+print('Loading frames...')
+frames = loadVideo(VIDEO_PATHS[1])
+# frames = loadImages(IMG_PATHS[:3])
 
-    drawImage(fig, img, K, tags)
-    # plt.savefig('result.pdf', format='pdf')
-    plt.xlabel(f'Position: {pose.pos}')
-    plt.show()
+print('Detecting tags in frames...')
+frames = detectTags(frames)
+FPS = 20 # FPS
+manualPlayback = False # Whether to control when moving to next frame
+
+roll = np.array([
+    [1, 0, 0],
+    [0, 0, 1],
+    [0, -1, 0]
+])
+fixedFrameOffset = Pose(roll)
+visualizationOptions = {'FPS': FPS, 'manualPlayback': manualPlayback,
+                        'fixedFrameOffset': fixedFrameOffset, 'resizeImg': (300, 600)}
+vis = Visualize(map, frames, **visualizationOptions)
+
+vis.play()

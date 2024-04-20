@@ -1,57 +1,49 @@
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as PathEffects
-from mpl_toolkits.mplot3d import Axes3D
-
 import numpy as np
+import cv2
+from common.transformation import Pose
 
-def drawImage(fig, img, K, tags):
+fontFace = cv2.FONT_HERSHEY_PLAIN
+fontScale = 0.8
+lineThickness = 3
 
-    plt.subplot(121)
-    plt.imshow(img)
+def drawTags(img, K, tags):
+    
     for tag in tags:
-
-        # Draw box around tag
+        # Draw contour of tag
         for idx in range(len(tag.corners)):
-            x = [tag.corners[idx-1, 0], tag.corners[idx, 0]]
-            y = [tag.corners[idx-1, 1], tag.corners[idx, 1]]
-            plt.plot(x, y, color='green')
-        
-        # Add tag id as text to image
-        textOrigin = (tag.corners[0, 0].astype(int)+10, tag.corners[0, 1].astype(int)+10)
-        plt.text(textOrigin[0], textOrigin[1], str(tag.tag_id), color='red')
+            cv2.line(img, tuple(tag.corners[idx-1, :].astype(int)),
+                     tuple(tag.corners[idx, :].astype(int)), (0, 255, 0), thickness=lineThickness)
+
+        # Add tag id next to tag
+        cv2.putText(img, str(tag.tag_id),
+                    org=(tag.corners[0, 0].astype(int)+10,tag.corners[0, 1].astype(int)+10),
+                    fontFace=fontFace,
+                    fontScale=fontScale,
+                    color=(255, 0, 0))
+
         
         # Draw coordinate frame of tag
         R, t = tag.pose_R, tag.pose_t.reshape((3,))
-        T = np.ones((4, 4))
-        T[:3, :3] = R
-        T[:3, 3] = t
-        drawFrame(K, T, scale=0.1, labels=True)
-        
-    plt.xlim([0, img.shape[1]])
-    plt.ylim([img.shape[0], 0])
+        T = Pose(R, t)
+        drawCoordinateAxes(img, K, T.T, scale=0.1, labels=True)
 
 
-def drawFrame(K, T, scale=1, labels=False):
-    """
-    Visualize the coordinate frame axes of the 4x4 object-to-camera
-    matrix T using the 3x3 intrinsic matrix K.
 
-    Control the length of the axes by specifying the scale argument.
-    """
+def drawCoordinateAxes(img, K, T, scale=1, labels=False):
     X = T @ np.array([
         [0,scale,0,0],
         [0,0,scale,0],
         [0,0,0,scale],
         [1,1,1,1]])
-    u,v = project(K, X)
-    plt.plot([u[0], u[1]], [v[0], v[1]], color='#cc4422') # X-axis
-    plt.plot([u[0], u[2]], [v[0], v[2]], color='#11ff33') # Y-axis
-    plt.plot([u[0], u[3]], [v[0], v[3]], color='#3366ff') # Z-axis
+    u, v = project(K, X)
+    u, v = u.astype(int), v.astype(int)
+    cv2.line(img, [u[0], v[0]], [u[1], v[1]], color=(255, 0, 0), thickness=lineThickness)
+    cv2.line(img, [u[0], v[0]], [u[2], v[2]], color=(0, 255, 0), thickness=lineThickness)
+    cv2.line(img, [u[0], v[0]], [u[3], v[3]], color=(0, 0, 255), thickness=lineThickness)
     if labels:
-        textargs = {'color': 'w', 'va': 'center', 'ha': 'center', 'fontsize': 'x-small', 'path_effects': [PathEffects.withStroke(linewidth=1.5, foreground='k')]}
-        plt.text(u[1], v[1], 'X', **textargs)
-        plt.text(u[2], v[2], 'Y', **textargs)
-        plt.text(u[3], v[3], 'Z', **textargs)
+        cv2.putText(img, 'X', (u[1], v[1]), fontFace, fontScale, (255, 255, 255))
+        cv2.putText(img, 'Y', (u[2], v[2]), fontFace, fontScale, (255, 255, 255))
+        cv2.putText(img, 'Z', (u[3], v[3]), fontFace, fontScale, (255, 255, 255))
 
 
 def project(K, X):

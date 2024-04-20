@@ -1,21 +1,19 @@
 
 from common.transformation import Pose
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 
-
-Landmark = namedtuple('Landmark', ['T'])
 
 class Map:
     landmarks = OrderedDict() # Detected landmarks and their pose seen from the fixed frame
-    cameraPose = Pose() # Last known pose of camera
+    trajectory = [] # Store camera pose over time
     
     def handleDetections(self, tags):
         detections = OrderedDict() # id: pose
         for tag in tags:
             id, R, t = int(tag.tag_id), tag.pose_R, tag.pose_t.reshape((3,))
+            if id == 48: continue
             Tsc = Pose(R, t) # Transformation matrix from detection to camera frame
-            detections[id] = Landmark(Tsc) # Store detected landmark
-
+            detections[id] = Tsc # Store pose of detected landmark
         
         # Exists if in detections and landmarks
         existingLandmarksDetected = list(detections.keys() & self.landmarks.keys())
@@ -30,21 +28,19 @@ class Map:
 
         Tct = None # Transformation matrix from camera to fixed frame
         if fixedFrameDetected: # Fixed frame detected in image
-            Tct = detections[0].T.inv
+            Tct = detections[0].inv
         elif len(existingLandmarksDetected) > 0: # If no fixed frame, check for any other existing landmark
             someLandmark = existingLandmarksDetected[0]
-            Tst = self.landmarks[someLandmark].T
-            Tcs = detections[someLandmark].T.inv
+            Tst = self.landmarks[someLandmark]
+            Tcs = detections[someLandmark].inv
             Tct = Tst@Tcs
         
-        if Tct is None:
-            print('No known reference detected, unable to determine pose')
-            return
+        if Tct is None: return # No know reference detected
         
+        self.trajectory.append(Tct)
         self.cameraPose = Tct
         for id in newLandmarksDetected: # Update landmark storage with new landmarks
             if id not in detections.keys(): continue # Handle new landmark as mentioned above
-            Tsc = detections[id].T
+            Tsc = detections[id]
             Tst = Tct@Tsc
-            self.landmarks[id] = Landmark(Tst)
-
+            self.landmarks[id] = Tst
