@@ -26,7 +26,7 @@ def loadVideo(videoPath, maxFrames=None):
     cap = cv2.VideoCapture(videoPath)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
 
-    size = (300, 600)
+    size = (600, 300)
     writer = cv2.VideoWriter(f'{OUTPUT_FOLDER}/{path.basename(videoPath)[:-4]}.avi', fourcc, 20.0, size)
 
     i = 1
@@ -48,7 +48,7 @@ def loadVideo(videoPath, maxFrames=None):
 
 print('Loading frames and detecting trajectory...')
 maxFrames = None
-frames = loadVideo(VIDEO_PATHS[0], maxFrames)
+frames = loadVideo(VIDEO_PATHS[1], maxFrames)
 # frames = loadImages(IMG_PATHS[:3], maxFrames)
 
 FPS = 20 # FPS

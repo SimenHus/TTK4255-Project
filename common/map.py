@@ -35,10 +35,11 @@ class Map:
             Tcs = detections[someLandmark].inv
             Tct = Tst@Tcs
         
-        if Tct is None: return # No know reference detected
+        if Tct is None: # No know reference detected
+            self.trajectory.append(self.trajectory[-1])
+            return 
         
         self.trajectory.append(Tct)
-        self.cameraPose = Tct
         for id in newLandmarksDetected: # Update landmark storage with new landmarks
             if id not in detections.keys(): continue # Handle new landmark as mentioned above
             Tsc = detections[id]
